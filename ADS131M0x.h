@@ -196,6 +196,8 @@ typedef __PACKED_STRUCT{
 // Definitions of external functions that must be provided from
 // developer in the initilization
 
+typedef void (*Lock_f)(void);
+typedef void (*Unlock_f)(void);
 typedef void (*CSPin_f)(uint8_t Sig);
 typedef void (*SYNCPin_f)(uint8_t Sig);
 typedef void (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
@@ -203,6 +205,8 @@ typedef void (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
 /* Main Handle of the ADS131M0x Driver */
 typedef struct{
 	struct{
+		Lock_f Lock;
+		Unlock_f Unlock;
 		CSPin_f CSPin;
 		SYNCPin_f SYNCPin;
 		SPITransfer_f SPITransfer;
