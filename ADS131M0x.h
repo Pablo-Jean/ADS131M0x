@@ -13,7 +13,8 @@
  */
 
 #include <stdint.h>
-#include <cmsis_compiler.h>
+#include <stddef.h>
+#include <cmsis_gcc.h>
 
 /**
  * Macros
@@ -57,6 +58,12 @@
 #define ADS131_REG_REGMAP_CRC		0x3E
 #define ADS131_REG_RESERVED			0x3F
 
+#define ADS131_SET_FXN_LOCK(handle, Func)			handle.fxn.Lock = Func;
+#define ADS131_SET_FXN_UNLOCK(handle, Func)			handle.fxn.Unock = Func;
+#define ADS131_SET_FXN_CSPIN(handle, Func)			handle.fxn.CSPin = Func;
+#define ADS131_SET_FXN_SYNCPIN(handle, Func)		handle.fxn.SYNCPin = Func;
+#define ADS131_SET_FXN_DELAYMS(handle, Func)		handle.fxn.DelayMs = Func;
+#define ADS131_SET_FXN_SPITRANSFER(handle, Func) 	handle.fxn.SPITransfer = Func;
 
 /**
  * Enumerates
@@ -79,117 +86,150 @@ typedef enum{
 // Strucuts for the fields of each register of the
 // ADS131M0x, this is to make more easy the handleing of
 // the parameters
-typedef __PACKED_STRUCT{
-	uint8_t _r1 	: 8;
-	uint8_t CHANCNT : 4;
-	uint8_t _r2		: 4;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t _r1 	: 8;
+		uint8_t CHANCNT : 4;
+		uint8_t _r2		: 4;
+	};
+	uint16_t _raw;
 }ads131_reg_id_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t DRDY0	: 1;
-	uint8_t DRDY1	: 1;
-	uint8_t _r1		: 6;
-	uint8_t WLENGTH : 2;
-	uint8_t RESET	: 1;
-	uint8_t CRC_TYPE: 1;
-	uint8_t CRC_ERR : 1;
-	uint8_t REG_MAP : 1;
-	uint8_t F_RESYNC: 1;
-	uint8_t LOCK	: 1;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t DRDY0	: 1;
+		uint8_t DRDY1	: 1;
+		uint8_t _r1		: 6;
+		uint8_t WLENGTH : 2;
+		uint8_t RESET	: 1;
+		uint8_t CRC_TYPE: 1;
+		uint8_t CRC_ERR : 1;
+		uint8_t REG_MAP : 1;
+		uint8_t F_RESYNC: 1;
+		uint8_t LOCK	: 1;
+	};
+	uint16_t _raw;
 }ads131_reg_status_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t DRDY_FMT  : 1;
-	uint8_t DRDY_HiZ  : 1;
-	uint8_t DRDY_SEL  : 2;
-	uint8_t TIMEOUT   : 1;
-	uint8_t _r1		  : 3;
-	uint8_t WLENGTH   : 2;
-	uint8_t RESET     : 1;
-	uint8_t CRC_TYPE  : 1;
-	uint8_t RX_CRC_EN : 1;
-	uint8_t REG_CRC_EN: 1;
-	uin8t_t _r2		  : 1;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t DRDY_FMT  : 1;
+		uint8_t DRDY_HiZ  : 1;
+		uint8_t DRDY_SEL  : 2;
+		uint8_t TIMEOUT   : 1;
+		uint8_t _r1		  : 3;
+		uint8_t WLENGTH   : 2;
+		uint8_t RESET     : 1;
+		uint8_t CRC_TYPE  : 1;
+		uint8_t RX_CRC_EN : 1;
+		uint8_t REG_CRC_EN: 1;
+		uint8_t _r2		  : 1;
+	};
+	uint16_t _raw;
 }ads131_reg_mode_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t PWR		: 2;
-	uint8_t OSR		: 2;
-	uint8_t TBM		: 1;
-	uint8_t _r1		: 2;
-	uint8_t CH0_EN	: 1;
-	uint8_t CH1_EN	: 1;
-	uint8_t _r2		: 6;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t POWER	: 2;
+		uint8_t OSR		: 2;
+		uint8_t TBM		: 1;
+		uint8_t _r1		: 2;
+		uint8_t CH0_EN	: 1;
+		uint8_t CH1_EN	: 1;
+		uint8_t _r2		: 6;
+	};
+	uint16_t _raw;
 }ads131_reg_clock_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t PGAGAIN0 	: 3;
-	uint8_t _res1		: 1;
-	uint8_t PGAGAIN1	: 3;
-	uint8_t _res2		: 1;
-	uint8_t PGAGAIN2	: 3;
-	uint8_t _res3		: 1;
-	uint8_t PGAGAIN3	: 3;
-	uint8_t _res4		: 1;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t PGAGAIN0 	: 3;
+		uint8_t _res1		: 1;
+		uint8_t PGAGAIN1	: 3;
+		uint8_t _res2		: 1;
+		uint8_t PGAGAIN2	: 3;
+		uint8_t _res3		: 1;
+		uint8_t PGAGAIN3	: 3;
+		uint8_t _res4		: 1;
+	};
+	uint16_t _raw;
 }ads131_reg_gain1_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t PGAGAIN4 	: 3;
-	uint8_t _res1		: 1;
-	uint8_t PGAGAIN5	: 3;
-	uint8_t _res2		: 1;
-	uint8_t PGAGAIN6	: 3;
-	uint8_t _res3		: 1;
-	uint8_t PGAGAIN7	: 3;
-	uint8_t _res4		: 1;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t PGAGAIN4 	: 3;
+		uint8_t _res1		: 1;
+		uint8_t PGAGAIN5	: 3;
+		uint8_t _res2		: 1;
+		uint8_t PGAGAIN6	: 3;
+		uint8_t _res3		: 1;
+		uint8_t PGAGAIN7	: 3;
+		uint8_t _res4		: 1;
+	};
+	uint16_t _raw;
 }ads131_reg_gain2_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t CD_EN		: 1;
-	uint8_t CD_LEN		: 3;
-	uint8_t CD_NUM		: 3;
-	uint8_t CD_ALLCH	: 1;
-	uint8_t GC_EN		: 1;
-	uint8_t GC_DLY		: 4;
-	uint8_t _res1		: 3;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t CD_EN		: 1;
+		uint8_t CD_LEN		: 3;
+		uint8_t CD_NUM		: 3;
+		uint8_t CD_ALLCH	: 1;
+		uint8_t GC_EN		: 1;
+		uint8_t GC_DLY		: 4;
+		uint8_t _res1		: 3;
+	};
+	uint16_t _raw;
 }ads131_reg_cfg_t;
 
-typedef __PACKED_STRUCT{
+typedef __PACKED_UNION{
 	uint16_t CD_TH_MSB;
+}ads131_thrshld_msb_t;
+
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t DCBLOCK		: 4;
+		uint8_t _res1		: 4;
+		uint8_t CD_TH_LSB	: 8;
+	};
+	uint16_t _raw;
 }ads131_thrshld_lsb_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t DCBLOCK		: 4;
-	uint8_t _res1		: 4;
-	uint8_t CD_TH_LSB	: 8;
-}ads131_thrshld_lsb_t;
-
-typedef __PACKED_STRUCT{
-	uint8_t MUX			: 2;
-	uint8_t DCBLK_DIS0	: 1;
-	uint8_t _res1		: 3;
-	uint16_t PHASE		: 10;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t MUX			: 2;
+		uint8_t DCBLK_DIS0	: 1;
+		uint8_t _res1		: 3;
+		uint16_t PHASE		: 10;
+	};
+	uint16_t _raw;
 }ads131_chx_cfg_t;
 
-typedef __PACKED_STRUCT{
+typedef __PACKED_UNION{
 	uint16_t OCAL_MSB;
 }ads131_chx_ocal_msb_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t _res1		: 8;
-	uint8_t OCAL_LSB	: 8;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t _res1		: 8;
+		uint8_t OCAL_LSB	: 8;
+	};
+	uint16_t _raw;
 }ads131_chx_ocal_lsb_t;
 
-typedef __PACKED_STRUCT{
+typedef __PACKED_UNION{
 	uint16_t GCAL_MSB;
 }ads131_chx_gcal_msb_t;
 
-typedef __PACKED_STRUCT{
-	uint8_t _res1		: 8;
-	uint8_t GCAL_LSB	: 8;
+typedef __PACKED_UNION{
+	__PACKED_STRUCT{
+		uint8_t _res1		: 8;
+		uint8_t GCAL_LSB	: 8;
+	};
+	uint16_t _raw;
 }ads131_chx_gcal_lsb_t;
 
-typedef __PACKED_STRUCT{
+typedef __PACKED_UNION{
 	uint16_t REG_CRC;
 }ads131_reg_regmap_crc_t;
 
@@ -200,6 +240,7 @@ typedef void (*Lock_f)(void);
 typedef void (*Unlock_f)(void);
 typedef void (*CSPin_f)(uint8_t Sig);
 typedef void (*SYNCPin_f)(uint8_t Sig);
+typedef void (*DelayMs_f)(uint32_t ms);
 typedef void (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
 
 /* Main Handle of the ADS131M0x Driver */
@@ -209,10 +250,12 @@ typedef struct{
 		Unlock_f Unlock;
 		CSPin_f CSPin;
 		SYNCPin_f SYNCPin;
+		DelayMs_f DelayMs;
 		SPITransfer_f SPITransfer;
 	}fxn;
 	uint8_t Initialized;
 	uint8_t nChannels;
+	uint8_t WordSize;
 }ads131_t;
 
 typedef struct{
@@ -232,9 +275,9 @@ typedef struct{
 
 ads131_err_e ads131_init(ads131_t *Ads131);
 
-ads131_err_e ads131_write_reg(ads131_t *Ads131, uint8_t reg, uint8_t val);
+ads131_err_e ads131_write_reg(ads131_t *Ads131, uint32_t reg, uint16_t val);
 
-ads131_err_e ads131_read_reg(ads131_t *Ads131, uint8_t reg, uint8_t *val);
+ads131_err_e ads131_read_reg(ads131_t *Ads131, uint32_t reg, uint16_t *val);
 
 ads131_err_e ads131_read_one_channel(ads131_t *Ads131, uint32_t *val);
 
