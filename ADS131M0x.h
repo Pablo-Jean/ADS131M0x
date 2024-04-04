@@ -84,13 +84,13 @@ typedef enum{
 
 typedef enum{
 	ADS131_CHANNEL0	= 0,
-	ADS131_CHANNEL1	= 0,
-	ADS131_CHANNEL2	= 0,
-	ADS131_CHANNEL3	= 0,
-	ADS131_CHANNEL4	= 0,
-	ADS131_CHANNEL5	= 0,
-	ADS131_CHANNEL6	= 0,
-	ADS131_CHANNEL7	= 0,
+	ADS131_CHANNEL1	= 1,
+	ADS131_CHANNEL2	= 2,
+	ADS131_CHANNEL3	= 3,
+	ADS131_CHANNEL4	= 4,
+	ADS131_CHANNEL5	= 5,
+	ADS131_CHANNEL6	= 6,
+	ADS131_CHANNEL7	= 7,
 }ads131_channel_e;
 
 typedef enum{
@@ -115,6 +115,25 @@ typedef enum{
 	ADS131_POSITIVE_DC		= 0x2,
 	ADS131_NEGATIVE_DC		= 0x3
 }ads131_mux_e;
+
+typedef enum{
+	ADS131_OSR_128			= 0x0,
+	ADS131_OSR_256			= 0x1,
+	ADS131_OSR_512			= 0x2,
+	ADS131_OSR_1024			= 0x3,
+	ADS131_OSR_2048			= 0x4,
+	ADS131_OSR_4096			= 0x5,
+	ADS131_OSR_8192			= 0x6,
+	ADS131_OSR_16384		= 0x7,
+	// special case, Turbo Mode
+	ADS131_OSR_64			= 0x8
+}ads131_osr_value_e;
+
+typedef enum{
+	ADS131_PM_ULTRA_LOW_POWER	= 0x0,
+	ADS131_PM_LOW_POWER			= 0x1,
+	ADS131_PM_HIGH_RESOLUTION 	= 0x2,
+}ads131_power_mode_e;
 
 /**
  * Typedefs and Structs
@@ -316,6 +335,7 @@ typedef struct{
 		ads131_ch_info_t ChInfo[ADS131_MAX_CHANNELS_CHIPSET];
 		double ReferenceVoltage;
 		uint8_t Initialized;
+		uint32_t kSamples;
 	}_intern;
 }ads131_t;
 
@@ -337,11 +357,17 @@ ads131_err_e ads131_read_reg(ads131_t *Ads131, uint32_t reg, uint16_t *val);
 
 ads131_err_e ads131_set_gain(ads131_t *Ads131, ads131_channel_e Channel, ads131_gain_e GainLevel);
 
-ads131_err_e ads131_set_clock(ads131_t *Ads131);
+ads131_err_e ads131_set_channel_enable(ads131_t *Ads131, ads131_channel_e Channel, ads131_enable_e Enable);
 
-ads131_err_e ads131_read_one_channel(ads131_t *Ads131, uint32_t *val);
+ads131_err_e ads131_set_mux(ads131_t *Ads131, ads131_channel_e Channel, ads131_mux_e Mux);
+
+ads131_err_e ads131_set_osr(ads131_t *Ads131, ads131_osr_value_e Osr);
+
+ads131_err_e ads131_set_power_mode(ads131_t *Ads131, ads131_power_mode_e PowerMode);
 
 ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *val);
+
+ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, double *miliVolt);
 
 // More configurations must be added later
 

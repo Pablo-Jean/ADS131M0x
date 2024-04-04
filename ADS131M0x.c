@@ -23,15 +23,16 @@
  */
 
 static uint8_t GainTable[] = {1, 2, 4, 8, 16, 32, 64, 128};
+static uint32_t OsrTable[] = {128, 256, 512, 1024, 2048, 4096, 8192, 16384, 64};
 
 /* Basic routines to call external */
-static void __write_spi(ads131_t *Ads131, uint8_t *tx, uint32_t len){
-	Ads131->fxn.SPITransfer(tx, NULL, len);
-}
-
-static void __read_spi(ads131_t *Ads131, uint8_t *rx, uint32_t len){
-	Ads131->fxn.SPITransfer(NULL, rx, len);
-}
+//static void __write_spi(ads131_t *Ads131, uint8_t *tx, uint32_t len){
+//	Ads131->fxn.SPITransfer(tx, NULL, len);
+//}
+//
+//static void __read_spi(ads131_t *Ads131, uint8_t *rx, uint32_t len){
+//	Ads131->fxn.SPITransfer(NULL, rx, len);
+//}
 
 static ads131_err_e __transfer_spi(ads131_t *Ads131, uint8_t *tx, uint8_t *rx, uint32_t len){
 	return Ads131->fxn.SPITransfer(tx, rx, len);
@@ -46,7 +47,7 @@ static void __sync_reset_pin(ads131_t *Ads131, uint8_t sync_reset){
 		Ads131->fxn.SYNCPin(sync_reset);
 }
 
-static __delay_ms(ads131_t *Ads131, uint32_t ms){
+static void __delay_ms(ads131_t *Ads131, uint32_t ms){
 	Ads131->fxn.DelayMs(ms);
 }
 
@@ -159,16 +160,45 @@ ads131_err_e _write_regs(ads131_t *Ads131, uint32_t reg, uint16_t val){
 	return _xfer_words(Ads131, frame, NULL, sizeof(frame));
 }
 
+ads131_err_e _update_samplerate(ads131_t *Ads131){
+	ads131_reg_clock_t Clock;
+	uint8_t TbIdx;
+	const uint32_t ULP_FMOD = 1024000;
+	const uint32_t LP_FMOD = 2048000;
+	const uint32_t HR_FMOD = 4096000;
+	const uint32_t MAXSPS = 32000;
+
+	_read_regs(Ads131, ADS131_REG_CLOCK, &Clock._raw);
+	if (Clock.TBM == 1){
+		TbIdx = ADS131_OSR_64;
+	}
+	else{
+		TbIdx = Clock.OSR;
+	}
+	if (Clock.POWER == ADS131_PM_ULTRA_LOW_POWER){
+		Ads131->_intern.kSamples = ULP_FMOD/OsrTable[TbIdx];
+	}
+	else if (Clock.POWER == ADS131_PM_ULTRA_LOW_POWER){
+		Ads131->_intern.kSamples = LP_FMOD/OsrTable[TbIdx];
+	}
+	else{
+		Ads131->_intern.kSamples = HR_FMOD/OsrTable[TbIdx];
+	}
+
+	if (Ads131->_intern.kSamples > MAXSPS){
+		Ads131->_intern.kSamples = MAXSPS;
+	}
+
+	return ADS131_OK;
+}
+
 /*
  * Publics
  */
 
 ads131_err_e ads131_init(ads131_t *Ads131){
 	ads131_reg_status_t status;
-	ads131_reg_gain1_t Gain1;
-	ads131_reg_gain2_t Gain2;
 	ads131_reg_id_t id;
-	uint8_t i;
 
 	if (Ads131 == NULL){
 		return ADS131_UNKNOWN;
@@ -192,19 +222,11 @@ ads131_err_e ads131_init(ads131_t *Ads131){
 	_read_regs(Ads131, ADS131_REG_ID, &id._raw);
 	Ads131->nChannels = id.CHANCNT;
 
-	_read_regs(Ads131, ADS131_REG_GAIN1, &Gain1._raw);
-	_read_regs(Ads131, ADS131_REG_GAIN2, &Gain2._raw);
-	for (i=0 ; i<Ads131->nChannels ; i++){
-		if (i < 4){
-			Ads131->_intern.ChInfo[i].Gain = ((Gain1._raw >> (4*i)) & 0x7);
-		}
-		else{
-			Ads131->_intern.ChInfo[i].Gain = ((Gain2._raw >> (4*(i - 4))) & 0x7);
-		}
-	}
 	if (status.LOCK == 1){
 		_xfer_cmd(Ads131, ADS131_CMD_UNLOCK);
 	}
+
+	_update_samplerate(Ads131);
 
 	Ads131->_intern.Initialized = ADS131M0_DRIVER_INITILIZED;
 
@@ -219,9 +241,7 @@ ads131_err_e ads131_write_reg(ads131_t *Ads131, uint32_t reg, uint16_t val){
 		return ADS131_NOT_INITIALIZED;
 	}
 
-	_write_regs(Ads131, reg, val);
-
-	return ADS131_OK;
+	return _write_regs(Ads131, reg, val);
 }
 
 ads131_err_e ads131_read_reg(ads131_t *Ads131, uint32_t reg, uint16_t *val){
@@ -232,35 +252,7 @@ ads131_err_e ads131_read_reg(ads131_t *Ads131, uint32_t reg, uint16_t *val){
 		return ADS131_NOT_INITIALIZED;
 	}
 
-	return ADS131_OK;
-}
-
-ads131_err_e ads131_set_clock(ads131_t *Ads131){
-	ads131_reg_clock_t Clock;
-
-	if (Ads131 == NULL){
-		return ADS131_UNKNOWN;
-	}
-	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
-		return ADS131_NOT_INITIALIZED;
-	}
-
-	_read_regs(Ads131, ADS131_REG_CLOCK, &Clock._raw);
-	if (Clock.POWER == 0x2 || Clock.POWER == 0x3){
-		// Sets the TBM to OSR set by OSR[2..0]
-		// And sets the OSR to 128 ratio sample
-		// For a 8 MHz crystal, 64 or 128 will give
-		// 32kSPS
-	}
-	else{
-		// The other cases will be treated later
-	}
-	Clock.TBM = 0;
-	Clock.OSR = 0x7;
-	_write_regs(Ads131, ADS131_REG_CLOCK, Clock._raw);
-
-
-	return ADS131_OK;
+	return _read_regs(Ads131, reg, val);
 }
 
 ads131_err_e ads131_set_gain(ads131_t *Ads131, ads131_channel_e Channel, ads131_gain_e GainLevel){
@@ -301,46 +293,88 @@ ads131_err_e ads131_set_gain(ads131_t *Ads131, ads131_channel_e Channel, ads131_
 	return ADS131_OK;
 }
 
-ads131_err_e ads131_set_channel_enable(ads131_t *Ads131, ads131_channel_e Channel, Enable){
-	if (Ads131 == NULL){
-		return ADS131_UNKNOWN;
-	}
-	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
-		return ADS131_NOT_INITIALIZED;
-	}
-
-	return ADS131_OK;
-}
-
 ads131_err_e ads131_set_channel_enable(ads131_t *Ads131, ads131_channel_e Channel, ads131_enable_e Enable){
+	ads131_reg_clock_t Clock;
+
 	if (Ads131 == NULL){
 		return ADS131_UNKNOWN;
 	}
 	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
 		return ADS131_NOT_INITIALIZED;
 	}
+
+	_read_regs(Ads131, ADS131_REG_CLOCK, &Clock._raw);
+	if (Enable == ADS131_ENABLE){
+		Clock._raw |= (1 << (8+Channel));
+	}
+	else{
+		Clock._raw &= ~(1 << (8+Channel));
+	}
+	_write_regs(Ads131, ADS131_REG_CLOCK, Clock._raw);
+	Ads131->_intern.ChInfo[Channel].enabled = Enable;
 
 	return ADS131_OK;
 }
 
 ads131_err_e ads131_set_mux(ads131_t *Ads131, ads131_channel_e Channel, ads131_mux_e Mux){
+	ads131_reg_chx_cfg_t ChCfg;
+	uint16_t ChannelCfgAddr;
+
 	if (Ads131 == NULL){
 		return ADS131_UNKNOWN;
 	}
 	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
 		return ADS131_NOT_INITIALIZED;
 	}
+
+	Mux &= 0x3;
+	ChannelCfgAddr = ADS131_REG_CH0_CFG + (Channel * 0x5);
+	_read_regs(Ads131, ChannelCfgAddr, &ChCfg._raw);
+	ChCfg.MUX = Mux;
+	_write_regs(Ads131, ChannelCfgAddr, ChCfg._raw);
 
 	return ADS131_OK;
 }
 
-ads131_err_e ads131_read_one_channel(ads131_t *Ads131, uint32_t *val){
+ads131_err_e ads131_set_osr(ads131_t *Ads131, ads131_osr_value_e Osr){
+	ads131_reg_clock_t Clock;
+
 	if (Ads131 == NULL){
 		return ADS131_UNKNOWN;
 	}
 	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
 		return ADS131_NOT_INITIALIZED;
 	}
+
+	_read_regs(Ads131, ADS131_REG_CLOCK, &Clock._raw);
+	if (Osr == ADS131_OSR_64){
+		// Turbo Mode
+		Clock.TBM = 1;
+	}
+	else{
+		Clock.TBM = 0;
+		Clock.OSR = (uint8_t)Osr;
+	}
+	_write_regs(Ads131, ADS131_REG_CLOCK, Clock._raw);
+	_update_samplerate(Ads131);
+
+	return ADS131_OK;
+}
+
+ads131_err_e ads131_set_power_mode(ads131_t *Ads131, ads131_power_mode_e PowerMode){
+	ads131_reg_clock_t Clock;
+
+	if (Ads131 == NULL){
+		return ADS131_UNKNOWN;
+	}
+	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
+		return ADS131_NOT_INITIALIZED;
+	}
+
+	_read_regs(Ads131, ADS131_REG_CLOCK, &Clock._raw);
+	Clock.POWER = PowerMode;
+	_write_regs(Ads131, ADS131_REG_CLOCK, Clock._raw);
+	_update_samplerate(Ads131);
 
 	return ADS131_OK;
 }
@@ -368,6 +402,35 @@ ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *va
 
 		val->ChannelVoltageMv[i] = (val->ChannelRaw[i] * (Ads131->_intern.ReferenceVoltage/_24BITS_MAX));
 		val->ChannelVoltageMv[i] /= (GainTable[Ads131->_intern.ChInfo[i].Gain]);
+	}
+
+	return ADS131_OK;
+}
+
+ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, double *miliVolt){
+	ads131_channels_val_t val;
+	ads131_err_e err;
+
+	if (Ads131 == NULL){
+		return ADS131_UNKNOWN;
+	}
+	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
+		return ADS131_NOT_INITIALIZED;
+	}
+
+	if (Channel > Ads131->nChannels){
+		return ADS131_CHANNEL_DOENST_EXISTS;
+	}
+
+	err = ads131_read_all_channel(Ads131, &val);
+	if (err){
+		return err;
+	}
+	if (raw != NULL){
+		*raw = val.ChannelRaw[Channel];
+	}
+	if (miliVolt != NULL){
+		*miliVolt = val.ChannelVoltageMv[Channel];
 	}
 
 	return ADS131_OK;
