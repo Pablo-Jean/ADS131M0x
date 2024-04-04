@@ -14,6 +14,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
+#include <malloc.h>
 #include <cmsis_gcc.h>
 
 /**
@@ -22,6 +24,8 @@
 
 #define ADS131M0_DRIVER_INITILIZED	0xC4
 
+#define ADS131_MAX_CHANNELS_CHIPSET	8
+
 #define ADS131_CMD_NULL				0x0000
 #define ADS131_CMD_RESET			0x0011
 #define ADS131_CMD_STANDBY			0x0022
@@ -29,7 +33,7 @@
 #define ADS131_CMD_LOCK				0x0555
 #define ADS131_CMD_UNLOCK			0x0655
 #define ADS131_CMD_RREG				0xA000
-#define ADS131_CMD_WREG				0xB000
+#define ADS131_CMD_WREG				0x6000
 
 // Read-Only registers
 #define ADS131_REG_ID				0x00
@@ -78,6 +82,39 @@ typedef enum{
 	ADS131_UNKNOWN = 0xFF
 }ads131_err_e;
 
+typedef enum{
+	ADS131_CHANNEL0	= 0,
+	ADS131_CHANNEL1	= 0,
+	ADS131_CHANNEL2	= 0,
+	ADS131_CHANNEL3	= 0,
+	ADS131_CHANNEL4	= 0,
+	ADS131_CHANNEL5	= 0,
+	ADS131_CHANNEL6	= 0,
+	ADS131_CHANNEL7	= 0,
+}ads131_channel_e;
+
+typedef enum{
+	ADS131_GAIN_1 	= 0x0,
+	ADS131_GAIN_2 	= 0x1,
+	ADS131_GAIN_4 	= 0x2,
+	ADS131_GAIN_8 	= 0x3,
+	ADS131_GAIN_16 	= 0x4,
+	ADS131_GAIN_32 	= 0x5,
+	ADS131_GAIN_64 	= 0x6,
+	ADS131_GAIN_128 = 0x7,
+}ads131_gain_e;
+
+typedef enum{
+	ADS131_DISABLE,
+	ADS131_ENABLE
+}ads131_enable_e;
+
+typedef enum{
+	ADS131_MUX_AINP_AINN	= 0x0,
+	ADS131_MUX_SORTED		= 0x1,
+	ADS131_POSITIVE_DC		= 0x2,
+	ADS131_NEGATIVE_DC		= 0x3
+}ads131_mux_e;
 
 /**
  * Typedefs and Structs
@@ -86,7 +123,7 @@ typedef enum{
 // Strucuts for the fields of each register of the
 // ADS131M0x, this is to make more easy the handleing of
 // the parameters
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t _r1 	: 8;
 		uint8_t CHANCNT : 4;
@@ -95,11 +132,16 @@ typedef __PACKED_UNION{
 	uint16_t _raw;
 }ads131_reg_id_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t DRDY0	: 1;
 		uint8_t DRDY1	: 1;
-		uint8_t _r1		: 6;
+		uint8_t DRDY2	: 1;
+		uint8_t DRDY3	: 1;
+		uint8_t DRDY4	: 1;
+		uint8_t DRDY5	: 1;
+		uint8_t DRDY6	: 1;
+		uint8_t DRDY7	: 1;
 		uint8_t WLENGTH : 2;
 		uint8_t RESET	: 1;
 		uint8_t CRC_TYPE: 1;
@@ -111,7 +153,7 @@ typedef __PACKED_UNION{
 	uint16_t _raw;
 }ads131_reg_status_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t DRDY_FMT  : 1;
 		uint8_t DRDY_HiZ  : 1;
@@ -128,20 +170,25 @@ typedef __PACKED_UNION{
 	uint16_t _raw;
 }ads131_reg_mode_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t POWER	: 2;
-		uint8_t OSR		: 2;
+		uint8_t OSR		: 3;
 		uint8_t TBM		: 1;
 		uint8_t _r1		: 2;
 		uint8_t CH0_EN	: 1;
 		uint8_t CH1_EN	: 1;
-		uint8_t _r2		: 6;
+		uint8_t CH2_EN	: 1;
+		uint8_t CH3_EN	: 1;
+		uint8_t CH4_EN	: 1;
+		uint8_t CH5_EN	: 1;
+		uint8_t CH6_EN	: 1;
+		uint8_t CH7_EN	: 1;
 	};
 	uint16_t _raw;
 }ads131_reg_clock_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t PGAGAIN0 	: 3;
 		uint8_t _res1		: 1;
@@ -155,7 +202,7 @@ typedef __PACKED_UNION{
 	uint16_t _raw;
 }ads131_reg_gain1_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t PGAGAIN4 	: 3;
 		uint8_t _res1		: 1;
@@ -169,7 +216,7 @@ typedef __PACKED_UNION{
 	uint16_t _raw;
 }ads131_reg_gain2_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t CD_EN		: 1;
 		uint8_t CD_LEN		: 3;
@@ -182,20 +229,21 @@ typedef __PACKED_UNION{
 	uint16_t _raw;
 }ads131_reg_cfg_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	uint16_t CD_TH_MSB;
-}ads131_thrshld_msb_t;
+	uint16_t _raw;
+}ads131_reg_thrshld_msb_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t DCBLOCK		: 4;
 		uint8_t _res1		: 4;
 		uint8_t CD_TH_LSB	: 8;
 	};
 	uint16_t _raw;
-}ads131_thrshld_lsb_t;
+}ads131_reg_thrshld_lsb_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t MUX			: 2;
 		uint8_t DCBLK_DIS0	: 1;
@@ -203,48 +251,59 @@ typedef __PACKED_UNION{
 		uint16_t PHASE		: 10;
 	};
 	uint16_t _raw;
-}ads131_chx_cfg_t;
+}ads131_reg_chx_cfg_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	uint16_t OCAL_MSB;
-}ads131_chx_ocal_msb_t;
+	uint16_t _raw;
+}ads131_reg_chx_ocal_msb_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t _res1		: 8;
 		uint8_t OCAL_LSB	: 8;
 	};
 	uint16_t _raw;
-}ads131_chx_ocal_lsb_t;
+}ads131_reg_chx_ocal_lsb_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	uint16_t GCAL_MSB;
-}ads131_chx_gcal_msb_t;
+	uint16_t _raw;
+}ads131_reg_chx_gcal_msb_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	__PACKED_STRUCT{
 		uint8_t _res1		: 8;
 		uint8_t GCAL_LSB	: 8;
 	};
 	uint16_t _raw;
-}ads131_chx_gcal_lsb_t;
+}ads131_reg_chx_gcal_lsb_t;
 
-typedef __PACKED_UNION{
+typedef union{
 	uint16_t REG_CRC;
+	uint16_t _raw;
 }ads131_reg_regmap_crc_t;
+
+typedef struct{
+	ads131_gain_e Gain;
+	uint8_t enabled;
+}ads131_ch_info_t;
 
 // Definitions of external functions that must be provided from
 // developer in the initilization
 
-typedef void (*Lock_f)(void);
-typedef void (*Unlock_f)(void);
-typedef void (*CSPin_f)(uint8_t Sig);
-typedef void (*SYNCPin_f)(uint8_t Sig);
-typedef void (*DelayMs_f)(uint32_t ms);
-typedef void (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
+typedef void 	(*Lock_f)(void);
+typedef void 	(*Unlock_f)(void);
+typedef void 	(*CSPin_f)(uint8_t Sig);
+typedef void 	(*SYNCPin_f)(uint8_t Sig);
+typedef void 	(*DelayMs_f)(uint32_t ms);
+typedef uint8_t (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
 
 /* Main Handle of the ADS131M0x Driver */
 typedef struct{
+	uint8_t nChannels;
+	uint8_t WordSize;
+	uint32_t oscFreq;
 	struct{
 		Lock_f Lock;
 		Unlock_f Unlock;
@@ -253,20 +312,17 @@ typedef struct{
 		DelayMs_f DelayMs;
 		SPITransfer_f SPITransfer;
 	}fxn;
-	uint8_t Initialized;
-	uint8_t nChannels;
-	uint8_t WordSize;
+	struct{
+		ads131_ch_info_t ChInfo[ADS131_MAX_CHANNELS_CHIPSET];
+		double ReferenceVoltage;
+		uint8_t Initialized;
+	}_intern;
 }ads131_t;
 
 typedef struct{
-	uint32_t Channel0;
-	uint32_t Channel1;
-	uint32_t Channel2;
-	uint32_t Channel3;
-	uint32_t Channel4;
-	uint32_t Channel5;
-	uint32_t Channel6;
-	uint32_t Channel7;
+	int32_t ChannelRaw[ADS131_MAX_CHANNELS_CHIPSET];
+	double ChannelOffset[ADS131_MAX_CHANNELS_CHIPSET];
+	double ChannelVoltageMv[ADS131_MAX_CHANNELS_CHIPSET];
 }ads131_channels_val_t;
 
 /*
@@ -278,6 +334,10 @@ ads131_err_e ads131_init(ads131_t *Ads131);
 ads131_err_e ads131_write_reg(ads131_t *Ads131, uint32_t reg, uint16_t val);
 
 ads131_err_e ads131_read_reg(ads131_t *Ads131, uint32_t reg, uint16_t *val);
+
+ads131_err_e ads131_set_gain(ads131_t *Ads131, ads131_channel_e Channel, ads131_gain_e GainLevel);
+
+ads131_err_e ads131_set_clock(ads131_t *Ads131);
 
 ads131_err_e ads131_read_one_channel(ads131_t *Ads131, uint32_t *val);
 
