@@ -58,6 +58,42 @@
 #define ADS131_REG_CH1_OCAL_LSB		0x10
 #define ADS131_REG_CH1_GCAL_MSB		0x11
 #define ADS131_REG_CH1_GCAL_LSB		0x12
+// Channel 2 Specific Registers
+#define ADS131_REG_CH2_CFG			0x13
+#define ADS131_REG_CH2_OCAL_MSB		0x14
+#define ADS131_REG_CH2_OCAL_LSB		0x15
+#define ADS131_REG_CH2_GCAL_MSB		0x16
+#define ADS131_REG_CH2_GCAL_LSB		0x17
+// Channel 3 Specific Registers
+#define ADS131_REG_CH3_CFG			0x18
+#define ADS131_REG_CH3_OCAL_MSB		0x19
+#define ADS131_REG_CH3_OCAL_LSB		0x1A
+#define ADS131_REG_CH3_GCAL_MSB		0x1B
+#define ADS131_REG_CH3_GCAL_LSB		0x1C
+// Channel 4 Specific Registers
+#define ADS131_REG_CH4_CFG			0x1D
+#define ADS131_REG_CH4_OCAL_MSB		0x1E
+#define ADS131_REG_CH4_OCAL_LSB		0x1F
+#define ADS131_REG_CH4_GCAL_MSB		0x20
+#define ADS131_REG_CH4_GCAL_LSB		0x21
+// Channel 5 Specific Registers
+#define ADS131_REG_CH5_CFG			0x22
+#define ADS131_REG_CH5_OCAL_MSB		0x23
+#define ADS131_REG_CH5_OCAL_LSB		0x24
+#define ADS131_REG_CH5_GCAL_MSB		0x25
+#define ADS131_REG_CH5_GCAL_LSB		0x26
+// Channel 6 Specific Registers
+#define ADS131_REG_CH6_CFG			0x27
+#define ADS131_REG_CH6_OCAL_MSB		0x28
+#define ADS131_REG_CH6_OCAL_LSB		0x29
+#define ADS131_REG_CH6_GCAL_MSB		0x2A
+#define ADS131_REG_CH6_GCAL_LSB		0x2B
+// Channel 7 Specific Registers
+#define ADS131_REG_CH7_CFG			0x2C
+#define ADS131_REG_CH7_OCAL_MSB		0x2D
+#define ADS131_REG_CH7_OCAL_LSB		0x2E
+#define ADS131_REG_CH7_GCAL_MSB		0x2F
+#define ADS131_REG_CH7_GCAL_LSB		0x30
 // Register Map CRC and Reserved
 #define ADS131_REG_REGMAP_CRC		0x3E
 #define ADS131_REG_RESERVED			0x3F
