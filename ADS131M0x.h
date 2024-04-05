@@ -119,6 +119,17 @@ typedef enum{
 }ads131_err_e;
 
 typedef enum{
+	ADS131M01 = 0x1,
+	ADS131M02 = 0x2,
+	ADS131M03 = 0x3,
+	ADS131M04 = 0x4,
+	ADS131M05 = 0x5,
+	ADS131M06 = 0x6,
+	ADS131M07 = 0x7,
+	ADS131M08 = 0x8,
+}ads131_model_e;
+
+typedef enum{
 	ADS131_CHANNEL0	= 0,
 	ADS131_CHANNEL1	= 1,
 	ADS131_CHANNEL2	= 2,
@@ -356,6 +367,7 @@ typedef uint8_t (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
 
 /* Main Handle of the ADS131M0x Driver */
 typedef struct{
+	ads131_model_e DeviceModel;
 	uint8_t nChannels;
 	uint8_t WordSize;
 	uint32_t oscFreq;

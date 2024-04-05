@@ -221,6 +221,7 @@ ads131_err_e ads131_init(ads131_t *Ads131){
 	_read_regs(Ads131, ADS131_REG_STATUS, &status._raw);
 	_read_regs(Ads131, ADS131_REG_ID, &id._raw);
 	Ads131->nChannels = id.CHANCNT;
+	Ads131->DeviceModel = (ads131_model_e)id.CHANCNT;
 
 	if (status.LOCK == 1){
 		_xfer_cmd(Ads131, ADS131_CMD_UNLOCK);
