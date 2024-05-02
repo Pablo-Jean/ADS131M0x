@@ -16,7 +16,7 @@
 #define _CS_ON					0
 #define _CS_OFF					1
 
-#define _24BITS_MAX			((16777216.0 - 1) / 2)
+#define _24BITS_MAX			((16777216ULL - 1ULL) / 2ULL)
 
 /*
  * Privates
@@ -383,7 +383,7 @@ ads131_err_e ads131_set_power_mode(ads131_t *Ads131, ads131_power_mode_e PowerMo
 ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *val){
 	uint32_t Response[ADS131_MAX_CHANNELS_CHIPSET + 1];
 	uint8_t i, offset;
-	const int32_t MODULO = 1 << 24;
+	const int32_t MODULO = (1 << 23);
 
 	if (Ads131 == NULL){
 		return ADS131_UNKNOWN;
@@ -398,7 +398,8 @@ ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *va
 	for (i=0 ; i<Ads131->nChannels ; i++){
 		val->ChannelRaw[i] = Response[offset++];
 		if (val->ChannelRaw[i] & MODULO){
-			val->ChannelRaw[i] = ~((int32_t*)(val))[i];
+			val->ChannelRaw[i] = 0x007FFFFF & (~((int32_t*)(val))[i]);
+			val->ChannelRaw[i] *= (-1);
 		}
 
 		val->ChannelVoltageMv[i] = (val->ChannelRaw[i] * (Ads131->_intern.ReferenceVoltage/_24BITS_MAX));

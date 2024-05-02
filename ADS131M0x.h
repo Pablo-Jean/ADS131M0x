@@ -158,9 +158,9 @@ typedef enum{
 
 typedef enum{
 	ADS131_MUX_AINP_AINN	= 0x0,
-	ADS131_MUX_SORTED		= 0x1,
-	ADS131_POSITIVE_DC		= 0x2,
-	ADS131_NEGATIVE_DC		= 0x3
+	ADS131_MUX_SHORTED		= 0x1,
+	ADS131_MUX_POSITIVE_DC	= 0x2,
+	ADS131_MUX_NEGATIVE_DC	= 0x3
 }ads131_mux_e;
 
 typedef enum{
