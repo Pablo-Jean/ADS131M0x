@@ -38,6 +38,13 @@ static ads131_err_e __transfer_spi(ads131_t *Ads131, uint8_t *tx, uint8_t *rx, u
 	return Ads131->fxn.SPITransfer(tx, rx, len);
 }
 
+static ads131_err_e __transfer_spi_irq(ads131_t *Ads131, uint8_t *tx, uint8_t *rx, uint32_t len){
+	if (Ads131->fxn.SPITransferIRQ != NULL)
+		return Ads131->fxn.SPITransferIRQ(tx, rx, len);
+	else
+		return ADS131_FAILED;
+}
+
 static void __cs_pin(ads131_t *Ads131, uint8_t cs){
 	Ads131->fxn.CSPin(cs);
 }
@@ -113,17 +120,11 @@ ads131_err_e _read_regs(ads131_t *Ads131, uint32_t reg, uint16_t *val){
 }
 
 ads131_err_e _read_n_words(ads131_t *Ads131, uint32_t *val, uint32_t Words){
-	uint8_t *TxDummyFrame, *RxFrame, i, offset;
+	uint8_t TxDummyFrame[32], RxFrame[32], i, offset;
 	ads131_err_e err;
 	size_t nBytes;
 
 	nBytes = Words*Ads131->WordSize;
-
-	TxDummyFrame = (uint8_t*)malloc(nBytes);
-	RxFrame = (uint8_t*)malloc(nBytes);
-	if (RxFrame == NULL || TxDummyFrame == NULL){
-		while(1);
-	}
 	memset(TxDummyFrame, 0, nBytes);
 
 	__lock_spi(Ads131);
@@ -140,8 +141,19 @@ ads131_err_e _read_n_words(ads131_t *Ads131, uint32_t *val, uint32_t Words){
 		val[i] |= (RxFrame[offset++]);
 	}
 
-	free(TxDummyFrame);
-	free(RxFrame);
+	return err;
+}
+
+ads131_err_e _read_n_wordsIRQ(ads131_t *Ads131, uint32_t Words){
+	ads131_err_e err;
+	size_t nBytes;
+
+	nBytes = Words*Ads131->WordSize;
+	memset(Ads131->_intern.BufferForTxIrq, 0, sizeof(Ads131->_intern.BufferForTxIrq));
+
+	__lock_spi(Ads131);
+	__cs_pin(Ads131, _CS_ON);
+	err = __transfer_spi_irq(Ads131, Ads131->_intern.BufferForTxIrq, Ads131->_intern.BufferForRxIrq, nBytes);
 
 	return err;
 }
@@ -398,7 +410,7 @@ ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *va
 	for (i=0 ; i<Ads131->nChannels ; i++){
 		val->ChannelRaw[i] = Response[offset++];
 		if (val->ChannelRaw[i] & MODULO){
-			val->ChannelRaw[i] = 0x007FFFFF & (~((int32_t*)(val))[i]);
+			val->ChannelRaw[i] = 0x007FFFFF & (~val->ChannelRaw[i]);
 			val->ChannelRaw[i] *= (-1);
 		}
 
@@ -434,6 +446,55 @@ ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel,
 	if (miliVolt != NULL){
 		*miliVolt = val.ChannelVoltageMv[Channel];
 	}
+
+	return ADS131_OK;
+}
+
+ads131_channels_val_t ads131_spi_transfer_irq(ads131_t *Ads131){
+	uint32_t Response[ADS131_MAX_CHANNELS_CHIPSET + 1];
+	uint8_t i, offset;
+	uint8_t Words = (ADS131_MAX_CHANNELS_CHIPSET + 1);
+	const int32_t MODULO = (1 << 23);
+	ads131_channels_val_t *ChannelVal = &Ads131->_intern.readChannBuff;
+
+	if (Ads131 == NULL){
+		return *ChannelVal;
+	}
+	__cs_pin(Ads131, _CS_OFF);
+	__unlock_spi(Ads131);
+
+	offset = 0;
+	for (i=0 ; i<Words ; i++){
+		Response[i] = 0;
+		Response[i] |= (Ads131->_intern.BufferForRxIrq[offset++] << 16);
+		Response[i] |= (Ads131->_intern.BufferForRxIrq[offset++] << 8);
+		Response[i] |= (Ads131->_intern.BufferForRxIrq[offset++]);
+	}
+	offset = 1;
+	for (i=0 ; i<Ads131->nChannels ; i++){
+		ChannelVal->ChannelRaw[i] = Response[offset++];
+		if (ChannelVal->ChannelRaw[i] & MODULO){
+			ChannelVal->ChannelRaw[i] = 0x007FFFFF & (~ChannelVal->ChannelRaw[i]);
+			ChannelVal->ChannelRaw[i] *= (-1);
+		}
+
+		ChannelVal->ChannelVoltageMv[i] = (ChannelVal->ChannelRaw[i] * (Ads131->_intern.ReferenceVoltage/_24BITS_MAX));
+		ChannelVal->ChannelVoltageMv[i] /= (GainTable[Ads131->_intern.ChInfo[i].Gain]);
+	}
+
+	return *ChannelVal;
+}
+
+ads131_err_e ads131_read_all_channel_irq(ads131_t *Ads131){
+
+	if (Ads131 == NULL){
+		return ADS131_UNKNOWN;
+	}
+	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
+		return ADS131_NOT_INITIALIZED;
+	}
+
+	_read_n_wordsIRQ(Ads131, ADS131_MAX_CHANNELS_CHIPSET + 1);
 
 	return ADS131_OK;
 }

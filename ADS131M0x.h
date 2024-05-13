@@ -24,7 +24,31 @@
 
 #define ADS131M0_DRIVER_INITILIZED	0xC4
 
-#define ADS131_MAX_CHANNELS_CHIPSET	8
+#ifndef false
+#define false		0
+#endif
+
+#ifndef true
+#define true		1
+#endif
+
+/* you can limit the number of the channels of your device */
+#ifndef ADS131_MAX_CHANNELS_CHIPSET
+#define ADS131_MAX_CHANNELS_CHIPSET		8
+#endif
+
+// Check if the ADS131_MAX_CHANNELS_CHIPSET is greater than 8
+// The ADS131M0 can has up to 8 channels
+#if defined (ADS131_MAX_CHANNELS_CHIPSET) && (ADS131_MAX_CHANNELS_CHIPSET > 8)
+#undef ADS131_MAX_CHANNELS_CHIPSET
+#define ADS131_MAX_CHANNELS_CHIPSET		8
+#endif
+
+#ifdef ADS131_USE_DOUBLE_PRECISION
+typedef double ads131Float_t;
+#else
+typedef float ads131Float_t;
+#endif
 
 #define ADS131_CMD_NULL				0x0000
 #define ADS131_CMD_RESET			0x0011
@@ -104,6 +128,7 @@
 #define ADS131_SET_FXN_SYNCPIN(handle, Func)		handle.fxn.SYNCPin = Func;
 #define ADS131_SET_FXN_DELAYMS(handle, Func)		handle.fxn.DelayMs = Func;
 #define ADS131_SET_FXN_SPITRANSFER(handle, Func) 	handle.fxn.SPITransfer = Func;
+#define ADS131_SET_FXN_SPITRANSFERIRQ(handle, Func) handle.fxn.SPITransferIRQ = Func;
 
 /**
  * Enumerates
@@ -365,6 +390,12 @@ typedef void 	(*SYNCPin_f)(uint8_t Sig);
 typedef void 	(*DelayMs_f)(uint32_t ms);
 typedef uint8_t (*SPITransfer_f)(uint8_t *Tx, uint8_t *Rx, uint32_t len);
 
+typedef struct{
+	int32_t ChannelRaw[ADS131_MAX_CHANNELS_CHIPSET];
+	ads131Float_t ChannelOffset[ADS131_MAX_CHANNELS_CHIPSET];
+	ads131Float_t ChannelVoltageMv[ADS131_MAX_CHANNELS_CHIPSET];
+}ads131_channels_val_t;
+
 /* Main Handle of the ADS131M0x Driver */
 typedef struct{
 	ads131_model_e DeviceModel;
@@ -378,20 +409,19 @@ typedef struct{
 		SYNCPin_f SYNCPin;
 		DelayMs_f DelayMs;
 		SPITransfer_f SPITransfer;
+		SPITransfer_f SPITransferIRQ;
 	}fxn;
 	struct{
 		ads131_ch_info_t ChInfo[ADS131_MAX_CHANNELS_CHIPSET];
-		double ReferenceVoltage;
+		ads131Float_t ReferenceVoltage;
 		uint8_t Initialized;
 		uint32_t kSamples;
+		uint8_t BufferForRxIrq[32];
+		uint8_t BufferForTxIrq[32];
+		ads131_channels_val_t readChannBuff;
 	}_intern;
 }ads131_t;
 
-typedef struct{
-	int32_t ChannelRaw[ADS131_MAX_CHANNELS_CHIPSET];
-	double ChannelOffset[ADS131_MAX_CHANNELS_CHIPSET];
-	double ChannelVoltageMv[ADS131_MAX_CHANNELS_CHIPSET];
-}ads131_channels_val_t;
 
 /*
  * Public Functions
@@ -400,22 +430,19 @@ typedef struct{
 ads131_err_e ads131_init(ads131_t *Ads131);
 
 ads131_err_e ads131_write_reg(ads131_t *Ads131, uint32_t reg, uint16_t val);
-
 ads131_err_e ads131_read_reg(ads131_t *Ads131, uint32_t reg, uint16_t *val);
 
 ads131_err_e ads131_set_gain(ads131_t *Ads131, ads131_channel_e Channel, ads131_gain_e GainLevel);
-
 ads131_err_e ads131_set_channel_enable(ads131_t *Ads131, ads131_channel_e Channel, ads131_enable_e Enable);
-
 ads131_err_e ads131_set_mux(ads131_t *Ads131, ads131_channel_e Channel, ads131_mux_e Mux);
-
 ads131_err_e ads131_set_osr(ads131_t *Ads131, ads131_osr_value_e Osr);
-
 ads131_err_e ads131_set_power_mode(ads131_t *Ads131, ads131_power_mode_e PowerMode);
 
 ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *val);
-
 ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, double *miliVolt);
+
+ads131_channels_val_t ads131_spi_transfer_irq(ads131_t *Ads131);
+ads131_err_e ads131_read_all_channel_irq(ads131_t *Ads131);
 
 // More configurations must be added later
 
