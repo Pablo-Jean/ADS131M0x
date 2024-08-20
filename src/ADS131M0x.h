@@ -139,6 +139,7 @@ typedef enum{
 	ADS131_FAILED,
 	ADS131_NOT_INITIALIZED,
 	ADS131_CHANNEL_DOENST_EXISTS,
+	ADS131_INVALID_PARAMS,
 
 	ADS131_UNKNOWN = 0xFF
 }ads131_err_e;
@@ -439,7 +440,7 @@ ads131_err_e ads131_set_osr(ads131_t *Ads131, ads131_osr_value_e Osr);
 ads131_err_e ads131_set_power_mode(ads131_t *Ads131, ads131_power_mode_e PowerMode);
 
 ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *val);
-ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, double *miliVolt);
+ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, ads131Float_t *miliVolt);
 
 ads131_channels_val_t ads131_spi_transfer_irq(ads131_t *Ads131);
 ads131_err_e ads131_read_all_channel_irq(ads131_t *Ads131);

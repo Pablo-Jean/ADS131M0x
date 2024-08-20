@@ -224,7 +224,7 @@ ads131_err_e ads131_init(ads131_t *Ads131){
 	Ads131->WordSize = 3;
 	Ads131->_intern.ReferenceVoltage = 1200.0;
 
-	// Performa  Reset on the device
+	// Perform a  Reset on the device
 	__sync_reset_pin(Ads131, _SYNC_ON);
 	__delay_ms(Ads131, 5);
 	__sync_reset_pin(Ads131, _SYNC_OFF);
@@ -358,8 +358,12 @@ ads131_err_e ads131_set_osr(ads131_t *Ads131, ads131_osr_value_e Osr){
 	if (Ads131->_intern.Initialized != ADS131M0_DRIVER_INITILIZED){
 		return ADS131_NOT_INITIALIZED;
 	}
+	if (Osr == ADS131_OSR_64 && Ads131->nChannels > 4){
+		return ADS131_INVALID_PARAMS;
+	}
 
 	_read_regs(Ads131, ADS131_REG_CLOCK, &Clock._raw);
+	// Turbo mode is only available in 2, 3 and 4 channels.
 	if (Osr == ADS131_OSR_64){
 		// Turbo Mode
 		Clock.TBM = 1;
@@ -421,7 +425,7 @@ ads131_err_e ads131_read_all_channel(ads131_t *Ads131, ads131_channels_val_t *va
 	return ADS131_OK;
 }
 
-ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, double *miliVolt){
+ads131_err_e ads131_read_one_channel(ads131_t *Ads131, ads131_channel_e Channel, uint32_t *raw, ads131Float_t *miliVolt){
 	ads131_channels_val_t val;
 	ads131_err_e err;
 
