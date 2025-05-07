@@ -1,5 +1,5 @@
 <center>
-<img src="imgs/logo-education.png"  width="300">
+<img src="pics/logo-education.png"  width="300">
 
 Created by Ouroboros Embedded Education.
 </center>
@@ -12,7 +12,7 @@ V1.0.0
 
 # ADS131M0x Driver Library Documentation
 
-<center><img src="imgs/ads131.png"  width="250"></center>
+<center><img src="pics/ads131.png"  width="250"></center>
 
 This documentation covers the C driver for the Texas Instruments ADS131M0x family of multi-channel, simultaneous-sampling, 24-bit delta-sigma ADCs. The driver is modular, hardware-agnostic, and supports flexible configuration for embedded applications.
 
